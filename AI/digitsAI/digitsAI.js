@@ -12,6 +12,8 @@ digitsAI.prototype.play = function (game) {
   verbose && console.log(game);
   verbose && console.log();
   verbose && console.log();
+  
+  this.generateBasePostulates();
   while ( tries.length == 0 || ! tries[tries.length-1].won) {
     var guess = this.generateGuess(game, verbose);
     var result = game.guess(guess);
@@ -30,14 +32,14 @@ digitsAI.prototype.generateGuess = function (game, verbose) {
   verbose && console.log();
   console.log(game);
   
-  
   if ( ! tries.length) {
-    for (var i=0; i<game.length;i++){
-      guess += i;
+    // first round
+    for (var i=0; i<game.length && i<possibleValues.length; i++){
+      guess += possibleValues[i];
     }
-    verbose && console.log('First try, sending basic input.');
     return guess;
   } else {
+    // other rounds
     this.calculatePostulates(tries[tries.length-1])
     
     

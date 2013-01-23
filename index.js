@@ -1,24 +1,14 @@
 var BullsAndCowsAI = function() {};
+var digitsAI = require('./AI/digitsAI/digitsAI.js');
 
 BullsAndCowsAI.prototype.play = function (game) {
-  
-  var digitsAI = require('./AI/digitsAI/digitsAI.js');
-  digitsAI.play(game);
-  
-  /*
-  if (game & game.options & game.options.mode) {
-    if (game.options.mode == 'numbers') {
-      var digitsAI = require('AI/digitsAI/digitsAI.js');
-      digitsAI.play(game);
-    } else {
-      console.log('Unknown game mode.');
-    return;
-    }
-  } else {
-    console.log('Game mode not defined.');
-    return;
+  if (game.mode == 'digits') {
+    digitsAI.play(game);
   }
-  */
+}
+
+BullsAndCowsAI.prototype.reset = function () {
+  digitsAI.reset();
 }
 
 module.exports = exports = BullsAndCowsAI;

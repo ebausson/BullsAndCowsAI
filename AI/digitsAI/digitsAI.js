@@ -1,7 +1,7 @@
 var digitsAI = function() {};
 
 digitsAI.prototype.play = function (game) {
-  this.reset();
+  this.reset(game);
   this.verbose = !!game.verbose;
   this.verbose && console.log();
   this.verbose && console.log('Game summary :');
@@ -14,8 +14,10 @@ digitsAI.prototype.play = function (game) {
   while ( this.tries.length == 0 || ! this.tries[this.tries.length-1].won) {
     var guess = this.generateGuess(game);
     var result = game.guess(guess);
-    this.verbose && console.log(result);
+    result.guess = guess;
     this.tries[this.tries.length] = result;
+    
+    this.verbose && console.log('result:' + JSON.stringify(result));
   }
 }
 
@@ -24,9 +26,6 @@ digitsAI.prototype.generateGuess = function (game) {
   this.verbose && console.log();
   this.verbose && console.log();
   this.verbose && console.log(' * Round n° ' + (this.tries.length+1));
-  this.verbose && console.log(' * Tries until now:');
-  this.verbose && console.log(this.tries);
-  this.verbose && console.log
   
   if ( ! this.tries.length) {
     // first round
@@ -36,27 +35,61 @@ digitsAI.prototype.generateGuess = function (game) {
     return guess;
   } else {
     // other rounds
-    this.calculatePostulates(this.tries[this.tries.length-1])
+    this.calculatePostulates(game, this.tries[this.tries.length-1])
     
     do {
       guess = this.getRandomGuess(game.length);
     } while ( ! this.isValidGuess(guess));
-    this.verbose && console.log('This round guess: ' + guess);
   }
   return guess;
 }
-digitsAI.prototype.calculatePostulates = function(attempt){
+
+digitsAI.prototype.calculatePostulates = function(game, attempt){
+  var totalFoundValue = attempt.good + attempt.bad;
+  
+  // case none 'in'
+  if (totalFoundValue == 0){
+    // remove searched values from possible values.
+    var newPossibleValues = [];
+    var j = 0;
+    for (var i = 0; i < this.possibleValues.length; i++){
+      if (attempt.guess.indexOf(this.possibleValues[i]) < 0){
+        newPossibleValues[j] = this.possibleValues[i];
+        j++;
+      }
+    }
+    this.possibleValues = newPossibleValues;
+  }
+  
+  // case all 'in'
+  if (totalFoundValue == game.length){
+    // set possible values as last attempt values
+    var newPossibleValues = [];
+    var j = 0;
+    for (var i = 0; i < this.possibleValues.length; i++){
+      if (attempt.guess.indexOf(this.possibleValues[i]) >= 0){
+        newPossibleValues[j] = this.possibleValues[i];
+        j++;
+      }
+    }
+    this.possibleValues = newPossibleValues;
+  }
+  
+  // TODO....
+  
   
 }
 
 digitsAI.prototype.generateBasePostulates = function(game){
+  
+  
   // postulate 'only one value for a given colum'.
   for (var column=1;column<=game.length;column++){
     var postulateElems = [];
     for (var j=0; j<this.possibleValues.length; j++){
-      postulateElems[j] = '(c' + column + '==' + this.possibleValues[j] + ')';
+      postulateElems[j] = '(v' + column + '==\'' + this.possibleValues[j] + '\')';
     }
-    var postulate = postulateElems.join('^');
+    var postulate = postulateElems.join('+');
     postulate = '(' + postulate + ' < 2)';
     this.postulates[this.postulates.length] = postulate;
   }
@@ -66,24 +99,20 @@ digitsAI.prototype.generateBasePostulates = function(game){
   for (var j=0; j<this.possibleValues.length; j++){
     var postulateElems = [];
     for (var column=1;column<=game.length;column++){
-      postulateElems[column-1] = '(c' + column + '==' + this.possibleValues[j] + ')';
+      postulateElems[column-1] = '(v' + column + '==\'' + this.possibleValues[j] + '\')';
     }
-    var postulate = postulateElems.join('^');
+    var postulate = postulateElems.join('+');
     postulate = '(' + postulate + ' < 2)';
     this.postulates[this.postulates.length] = postulate;
   }
   
   
+  //TODO : there may be rules I forgot to add here
   
-  
-  
-  //TODO
-  //...
-  
-  
+  this.verbose && console.log('');
+  this.verbose && console.log('Base postulates : ');
   this.verbose && console.log(this.postulates);
 }
-
 
 digitsAI.prototype.getRandomGuess = function(gameSize) {
   var result = '';
@@ -95,18 +124,31 @@ digitsAI.prototype.getRandomGuess = function(gameSize) {
     result += this.possibleValues[aValue];
   }
   return result;
-  //TODO
 }
 
 digitsAI.prototype.isValidGuess = function(guess) {
-  //TODO
-  return true;
+  
+  //defining variables
+  var code = '';
+  for (var i = 0; i < guess.length; i++){
+    code += 'var v' + (i+1) + '=\'' + guess[i] + '\'; ';
+  }
+  
+  code += 'var result = ' + this.postulates.join(' && ');
+  code += '; result;';
+  var result = eval(code);
+  return result;
 }
 
-digitsAI.prototype.reset = function() {
-  this.possibleValues = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+digitsAI.prototype.reset = function(game) {
   this.tries = [];
   this.postulates = [];
+  this.possibleValues = [];
+  if (game && game.alphabet){
+    for (var i = 0; i < game.alphabet.length; i++){
+      this.possibleValues[i] = game.alphabet[i];
+    }
+  }
 }
 
 exports = module.exports = new digitsAI;

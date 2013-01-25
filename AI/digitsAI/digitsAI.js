@@ -59,7 +59,7 @@ digitsAI.prototype.calculatePostulates = function(game, attempt){
       }
     }
     this.possibleValues = newPossibleValues;
-  }
+  } else
   
   // case all 'in'
   if (totalFoundValue == game.length){
@@ -73,11 +73,60 @@ digitsAI.prototype.calculatePostulates = function(game, attempt){
       }
     }
     this.possibleValues = newPossibleValues;
+  } else
+  
+  //case no 'bad'
+  if ( ! attempt.bad) {
+    /*
+     * Too much loop exception
+     * 
+    // in this case, at least one 'good', since else we will be in the first case.
+    var permutations = this.permute(attempt.guess);
+    var postulateElems = [];
+    for (var i = 0; i < permutations.length; i++) {
+      var postulateElemParts = [];
+      for (var j = 0; j < attempt.guess.length; j++) {
+        if (j < attempt.good) {
+          postulateElemParts[j] = '(v' + (j+1) + '==\'' + permutations[i][j] + '\')';
+        } else {
+          postulateElemParts[j] = '(v' + (j+1) + '!=\'' + permutations[i][j] + '\')';
+        }
+      }
+      postulateElems[i] = '(' + postulateElemParts.join('&&') + ')';
+    }
+    var postulate = ' ( ' + postulateElems.join(' || ') + ' ) ';
+    console.log(attempt.guess);
+    console.log(postulate);
+    this.postulates[this.postulates.length] = postulate;
+    */
+    var permutations = this.reducePermutations(attempt);
+    
+    var postulateElems = [];
+    for (var i = 0; i < permutations.length; i++) {
+      var postulateElemParts = [];
+      for (var j = 0; j < attempt.guess.length; j++) {
+        if (j < attempt.good) {
+          postulateElemParts[j] = '(v' + (j+1) + '==\'' + permutations[i][j] + '\')';
+        } else {
+          postulateElemParts[j] = '(v' + (j+1) + '!=\'' + permutations[i][j] + '\')';
+        }
+      }
+      postulateElems[i] = '(' + postulateElemParts.join('&&') + ')';
+    }
+    var postulate = ' ( ' + postulateElems.join(' || ') + ' ) ';
+    this.postulates[this.postulates.length] = postulate;
+    
+    
+    
+  } else
+  
+  // case no 'good'
+  if ( ! attempt.good) {
   }
   
-  // TODO....
-  
-  
+  // all other case
+  else {
+  }
 }
 
 digitsAI.prototype.generateBasePostulates = function(game){
@@ -151,4 +200,46 @@ digitsAI.prototype.reset = function(game) {
   }
 }
 
+digitsAI.prototype.permute = function(lastGuess) {
+    var permArr = [];
+    var usedChars = [];
+    var input = lastGuess.split('');
+    function main(input){
+        var i, ch;
+        for (i = 0; i < input.length; i++) {
+            ch = input.splice(i, 1)[0];
+            usedChars.push(ch);
+            if (input.length == 0) {
+                permArr.push(usedChars.slice());
+            }
+            main(input);
+            input.splice(i, 0, ch);
+            usedChars.pop();
+        }
+        return permArr;
+    }
+    return main(input);
+}
+
+digitsAI.prototype.basicSort = function(a, b){
+  return a>b;
+}
+
+digitsAI.prototype.reducePermutations = function(attempt){
+  var permutations = this.permute(attempt.guess);
+  var result = [];
+  var keys = [0, 1];
+  for (var i = 0; i< permutations.length; i++){
+    var key = permutations[i].slice(0, attempt.good-1).sort(this.basicSort);
+    var value = permutations[i].slice(attempt.good, attempt.guess.length).sort(this.basicSort);
+    if (keys.indexOf('key') < 0){
+      result[result.length] = permutations[i];
+      keys[keys.length] = key;
+    }
+  }
+  return result;
+}
+
+
 exports = module.exports = new digitsAI;
+

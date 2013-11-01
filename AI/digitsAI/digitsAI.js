@@ -18,6 +18,8 @@ digitsAI.prototype.play = function (game) {
   this.firstPostulates = [];
   // postulates for the second part, when we know the symbols and try to determine their order.
   this.secondPostulates = [];
+  // postulates that will be shared during the two parts
+  this.commonPostulates = [];
 
   // generating base postulates from game config
   this.generateBasePostulates(game);
@@ -35,7 +37,6 @@ digitsAI.prototype.play = function (game) {
 digitsAI.prototype.generateGuess = function (game) {
   var guess = '';
   this.verbose && console.log();
-  this.verbose && console.log();
   this.verbose && console.log(' * Round n° ' + (this.tries.length+1));
   
   if ( ! this.tries.length) {
@@ -46,8 +47,7 @@ digitsAI.prototype.generateGuess = function (game) {
     return guess;
   } else {
     // other rounds
-    this.calculatePostulates(game, this.tries[this.tries.length-1])
-    console.log(this.postulates);
+    this.calculatePostulates(game, this.tries[this.tries.length-1]);
     do {
       guess = this.getRandomGuess(game.length);
     } while ( ! this.isValidGuess(guess));
@@ -56,54 +56,66 @@ digitsAI.prototype.generateGuess = function (game) {
 }
 
 digitsAI.prototype.calculatePostulates = function(game, attempt){
-	var totalFoundValue = attempt.good + attempt.bad;
+  var totalFoundValue = attempt.good + attempt.bad;
 
-	// rafining possible values, (first part).
-	if (game.length != this.possibleValues.length) {
-	  // case none 'in'
-	  if (totalFoundValue == 0){
-	    // remove searched values from possible values.
-	    var newPossibleValues = [];
-	    var j = 0;
-	    for (var i = 0; i < this.possibleValues.length; i++){
-	      if (attempt.guess.indexOf(this.possibleValues[i]) < 0){
-	        newPossibleValues[j] = this.possibleValues[i];
-	        j++;
-	      }
-	    }
-	    this.possibleValues = newPossibleValues;
-	  } else
-	  
-	  // case all 'in'
-	  if (totalFoundValue == game.length){
-	    // set possible values as last attempt values
-	    var newPossibleValues = [];
-	    var j = 0;
-	    for (var i = 0; i < this.possibleValues.length; i++){
-	      if (attempt.guess.indexOf(this.possibleValues[i]) >= 0){
-	        newPossibleValues[j] = this.possibleValues[i];
-	        j++;
-	      }
-	    }
-	    this.possibleValues = newPossibleValues;
-	  }
-	}
+  // rafining possible values, (first part).
+  if (game.length != this.possibleValues.length) {
+    // case none 'in'
+    if (totalFoundValue == 0){
+      // remove searched values from possible values.
+      var newPossibleValues = [];
+      var j = 0;
+      for (var i = 0; i < this.possibleValues.length; i++){
+        if (attempt.guess.indexOf(this.possibleValues[i]) < 0){
+          newPossibleValues[j] = this.possibleValues[i];
+          j++;
+        }
+      }
+      this.possibleValues = newPossibleValues;
+    }
+    
+    // case all 'in'
+    else if (totalFoundValue == game.length){
+      // set possible values as last attempt values
+      var newPossibleValues = [];
+      var j = 0;
+      for (var i = 0; i < this.possibleValues.length; i++){
+        if (attempt.guess.indexOf(this.possibleValues[i]) >= 0){
+          newPossibleValues[j] = this.possibleValues[i];
+          j++;
+        }
+      }
+      this.possibleValues = newPossibleValues;
+    } else {
+      var postulateElems = [];
+      for (var i=0; i<game.length; i++) {
+        var postulateElemParts = [];
+        var value = attempt.guess.slice(i, i+1);
+        for (var j=1; j<=game.length;j++) {
+          postulateElemParts[j-1] = '(v' + j + '==' + value + ')';
+        }
+      postulateElems[i] = '(' + postulateElemParts.join('||') + ')';
+      }
+    var postulate = ' ( ' + postulateElems.join(' + ') + ' == ' + totalFoundValue + ' ) ';
+    this.commonPostulates[this.commonPostulates.length] = postulate;
+    }
+  }
 
 
 
-	// building second part postulates
-	if (totalFoundValue == game.length) {
-		if ( ! attempt.good) {
-			// every current value is not in his correct place.
-			for (var i=0; i<game.length;i++){
-				var value = attempt.guess.slice(i, i+1);
-				var newPostulate = ('(v' + i + '!=' + value + ')');
-				this.secondPostulates[this.secondPostulates.length] = newPostulate; // maybe test if altrady there.
-			}
-		}
-	} else if (totalFoundValue > 0) {
+  // building second part postulates
+   if (totalFoundValue == game.length) {
+    if ( ! attempt.good) {
+      // every current value is not in his correct place.
+      for (var i=1; i<=game.length;i++){
+        var value = attempt.guess.slice(i-1, i);
+        var newPostulate = ('(v' + i + '!=' + value + ')');
+        this.secondPostulates[this.secondPostulates.length] = newPostulate; // maybe test if altrady there.
+      }
+    }
+  } else if (totalFoundValue > 0) {
 
-	} // else if totalfound==0, values are removed, so that's it.
+  } // else if totalfound==0, values are removed, so that's it.
 
   //case no 'bad'
   if ( attempt.good > 0 && attempt.bad == 0) {
@@ -134,6 +146,16 @@ digitsAI.prototype.calculatePostulates = function(game, attempt){
   // all other case
   else {
   }
+
+
+  // regenerating postulates
+  this.postulates.length = 0;
+
+  if (game.length != this.possibleValues.length) {
+    this.postulates = this.postulates.concat(this.basePostulates, this.firstPostulates, this.commonPostulates);
+  } else {
+    this.postulates = this.postulates.concat(this.basePostulates, this.secondPostulates, this.commonPostulates);
+  }
 }
 
 digitsAI.prototype.generateBasePostulates = function(game){
@@ -160,15 +182,8 @@ digitsAI.prototype.generateBasePostulates = function(game){
     postulate = '(' + postulate + ' < 2)';
     this.basePostulates[this.basePostulates.length] = postulate;
   }
-  
-  
-  //TODO : there may be rules I forgot to add here
-  
-  this.verbose && console.log('');
-  this.verbose && console.log('Base postulates : ');
-  this.verbose && console.log(this.basePostulates);
 
-  this.postulates = this.basePostulates;
+  this.postulates.concat(this.basePostulates);
 }
 
 digitsAI.prototype.getRandomGuess = function(gameSize) {
@@ -230,23 +245,23 @@ digitsAI.prototype.permute = function(lastGuess, distance) {
     var result = main(input);
     if ((typeof distance == 'number') && (distance>0) && distance < lastGuess.length){
 
-	    var distanceFn = function(guess1, guess2){
-	    	if (guess1.length != guess2.length) {
-	    		//shound't happen
-	    		return -1;
-	    	}
-	    	var result=0;
-	    	for (var i=0; i<guess1.length; i++){
-	    		result += guess1[i] != guess2[i];
-	    	}
-	    	return result;
-	    };
+      var distanceFn = function(guess1, guess2){
+        if (guess1.length != guess2.length) {
+          //shound't happen
+          return -1;
+        }
+        var result=0;
+        for (var i=0; i<guess1.length; i++){
+          result += guess1[i] != guess2[i];
+        }
+        return result;
+      };
 
-    	for (var i = result.length-1; i>=0; i--){
-    		if (distanceFn(lastGuess, result[i]) > distance) {
-    			result.pop(i);
-    		}
-    	}
+      for (var i = result.length-1; i>=0; i--){
+        if (distanceFn(lastGuess, result[i]) > distance) {
+          result.pop(i);
+        }
+      }
     }
     return result;
 }

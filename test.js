@@ -5,7 +5,7 @@ var gameEngine = require('../bulls-and-cows/game.js');
 
 var game = new gameEngine({
   mode   : 'digits',
-  length : 4
+  length : 5
 });
 game.verbose = true;
 

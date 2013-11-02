@@ -151,7 +151,7 @@ digitsAI.prototype.calculateSecondPostulates = function(game, attempt) {
       postulateElems[i-1] = '(v' + i + '==' + value + ')';
     }
     var postulate = ' ( ' + postulateElems.join(' + ') + ' == ' + attempt.good + ' ) ';
-    console.log(postulate);
+    // console.log(postulate);
     this.firstPostulates[this.commonPostulates.length] = postulate;
   }
 }

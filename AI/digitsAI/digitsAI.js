@@ -24,16 +24,6 @@ digitsAI.prototype.play = function (game) {
   //reset already tried guesses.
   this.secondPartFlag = false;
   this.invalidGuess = [];
-  this.invalidGuess.contains = function(obj) {
-    var i = this.length;
-    while (i--) {
-        if (this[i] == obj) {
-            return true;
-        }
-    }
-    return false;
-  }
-
   // generating base postulates from game config
   this.generateBasePostulates(game);
   
@@ -65,7 +55,7 @@ digitsAI.prototype.generateGuess = function (game, attempt) {
     var valid = false;
     do {
       guess = this.getRandomGuess(game.length);
-      if ( ! this.invalidGuess.contains(guess)) {
+      if ( this.invalidGuess.indexOf(guess) == -1 ) {
         if (this.isValidGuess(guess)) {
           valid = true;
         } else {

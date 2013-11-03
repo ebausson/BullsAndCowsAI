@@ -24,10 +24,14 @@ digitsAI.prototype.play = function (game) {
   //reset already tried guesses.
   this.secondPartFlag = false;
   this.invalidGuess = [];
+
+  this.isValidFn = null;
+
   // generating base postulates from game config
   this.generateBasePostulates(game);
   
   while ( this.tries.length == 0 || ! this.tries[this.tries.length-1].won) {
+    this.isValidFn = null;
     var guess = this.generateGuess(game);
     var result = game.guess(guess);
     result.guess = guess;
@@ -115,8 +119,8 @@ digitsAI.prototype.calculateFirstPostulates = function(game, attempt) {
     for (var i=0; i<game.length; i++) {
       var postulateElemParts = [];
       var value = attempt.guess.slice(i, i+1);
-      for (var j=1; j<=game.length;j++) {
-        postulateElemParts[j-1] = '(v' + j + '==' + value + ')';
+      for (var j=0; j<game.length;j++) {
+        postulateElemParts[j] = '(v[' + j + ']==' + value + ')';
       }
       postulateElems[i] = '(' + postulateElemParts.join('||') + ')';
     }
@@ -129,16 +133,16 @@ digitsAI.prototype.calculateSecondPostulates = function(game, attempt) {
 
   if (attempt.good == 0) {
     // every current value is not in his correct place.
-    for (var i=1; i<=game.length;i++){
-      var value = attempt.guess.slice(i-1, i);
-      var newPostulate = ('(v' + i + '!=' + value + ')');
+    for (var i=0; i<game.length;i++){
+      var value = attempt.guess.slice(i, i+1);
+      var newPostulate = ('(v[' + i + ']!=' + value + ')');
       this.secondPostulates[this.secondPostulates.length] = newPostulate; // maybe test if altrady there.
     }
   } else {
     var postulateElems = [];
-    for (var i=1; i<=game.length; i++) {
-      var value = attempt.guess.slice(i-1, i);
-      postulateElems[i-1] = '(v' + i + '==' + value + ')';
+    for (var i=0; i<game.length; i++) {
+      var value = attempt.guess.slice(i, i+1);
+      postulateElems[i] = '(v[' + i + ']==' + value + ')';
     }
     var postulate = ' ( ' + postulateElems.join(' + ') + ' == ' + attempt.good + ' ) ';
     // console.log(postulate);
@@ -149,10 +153,10 @@ digitsAI.prototype.calculateSecondPostulates = function(game, attempt) {
 digitsAI.prototype.generateBasePostulates = function(game){
   
   // postulate 'only one value for a given colum'.
-  for (var column=1;column<=game.length;column++){
+  for (var column=0;column<game.length;column++){
     var postulateElems = [];
     for (var j=0; j<this.possibleValues.length; j++){
-      postulateElems[j] = '(v' + column + '==\'' + this.possibleValues[j] + '\')';
+      postulateElems[j] = '(v[' + column + ']==\'' + this.possibleValues[j] + '\')';
     }
     var postulate = postulateElems.join('+');
     postulate = '(' + postulate + ' < 2)';
@@ -163,8 +167,8 @@ digitsAI.prototype.generateBasePostulates = function(game){
   //postulate 'one value only once'.
   for (var j=0; j<this.possibleValues.length; j++){
     var postulateElems = [];
-    for (var column=1;column<=game.length;column++){
-      postulateElems[column-1] = '(v' + column + '==\'' + this.possibleValues[j] + '\')';
+    for (var column=0;column<game.length;column++){
+      postulateElems[column] = '(v[' + column + ']==\'' + this.possibleValues[j] + '\')';
     }
     var postulate = postulateElems.join('+');
     postulate = '(' + postulate + ' < 2)';
@@ -187,17 +191,20 @@ digitsAI.prototype.getRandomGuess = function(gameSize) {
 }
 
 digitsAI.prototype.isValidGuess = function(guess) {
-  
-  //defining variables
-  var code = '';
-  for (var i = 0; i < guess.length; i++){
-    code += 'var v' + (i+1) + '=\'' + guess[i] + '\'; ';
+  if (this.isValidFn == null) {
+    //defining variables
+    var code = '';
+    for (var i = 0; i < guess.length; i++){
+      code += 'var v' + (i+1) + '=\'' + guess[i] + '\'; ';
+    }
+    
+    code += 'var result = ' + this.postulates.join(' && ');
+    code += '; return result;';
+
+    this.isValidFn = eval('f = function(v){' + code + '} ; f;');
+    // var result = eval(code);
   }
-  
-  code += 'var result = ' + this.postulates.join(' && ');
-  code += '; result;';
-  var result = eval(code);
-  return result;
+  return this.isValidFn(guess);
 }
 
 digitsAI.prototype.reset = function(game) {

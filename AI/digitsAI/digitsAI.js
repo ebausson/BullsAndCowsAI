@@ -47,41 +47,48 @@ digitsAI.prototype.generateGuess = function (game, attempt) {
   this.verbose && console.log();
   this.verbose && console.log(' * Round n° ' + (this.tries.length+1));
   
+  if (this.tries.length > 0) {
+    this.calculatePostulates(game, this.tries[this.tries.length-1]);
+  }
+
+  var result = '';
   if ( ! this.tries.length) {
     // first round
     for (var i=0; i<game.length && i<this.possibleValues.length; i++){
-      guess += this.possibleValues[i];
+      result += this.possibleValues[i];
     }
-    return guess;
   } else {
-    // other rounds
-    this.calculatePostulates(game, this.tries[this.tries.length-1]);
+    //digits specific.
+    var testvalue = this.tries[this.tries.length-1].guess;
     var valid = false;
+    this.isValidGuess(testvalue);
+    //console.log(this.isValidFn.toString());
     do {
-      guess = this.getRandomGuess(game.length);
-      if ( this.invalidGuess.indexOf(guess) == -1 ) {
-        if (this.isValidGuess(guess)) {
-          valid = true;
-        } else {
-          this.isValidGuess[this.invalidGuess.length] = guess;
-        }
+      var zeroFlag = (testvalue.indexOf('0') == 0);
+      ++testvalue;
+      testvalue = (zeroFlag ? '0' : '' ) + testvalue;
+      if (this.isValidGuess(testvalue)) {
+        valid = true;
+        result = testvalue;
       }
-      
-    } while ( ! valid);
+    } while (!valid);
   }
-  return guess;
+  return result;
 }
 
 digitsAI.prototype.calculatePostulates = function(game, attempt){
   var totalFoundValue = attempt.good + attempt.bad;
 
+  //console.log('game length: ' + game.length);
+  //console.log(totalFoundValue);
+
   // building first part postulates
   if (game.length != this.possibleValues.length) {
     this.calculateFirstPostulates(game, attempt);
-    this.postulates = this.basePostulates.concat(this.firstPostulates, this.commonPostulates);
+    this.postulates = [].concat(this.basePostulates, this.firstPostulates, this.commonPostulates);
   } else {
     this.calculateSecondPostulates(game, attempt);
-    this.postulates = this.basePostulates.concat(this.secondPostulates, this.commonPostulates);
+    this.postulates = [].concat(this.basePostulates, this.secondPostulates, this.commonPostulates);
   }
 }
 
@@ -146,7 +153,7 @@ digitsAI.prototype.calculateSecondPostulates = function(game, attempt) {
     }
     var postulate = ' ( ' + postulateElems.join(' + ') + ' == ' + attempt.good + ' ) ';
     // console.log(postulate);
-    this.firstPostulates[this.commonPostulates.length] = postulate;
+    this.firstPostulates[this.firstPostulates.length] = postulate;
   }
 }
 
@@ -175,31 +182,13 @@ digitsAI.prototype.generateBasePostulates = function(game){
     this.basePostulates[this.basePostulates.length] = postulate;
   }
 
-  this.postulates.concat(this.basePostulates);
-}
-
-digitsAI.prototype.getRandomGuess = function(gameSize) {
-  var result = '';
-  for (var i=0; i<gameSize; i++) {
-    var aValue = Math.floor(Math.random() * (this.possibleValues.length+1));
-    if (aValue >= this.possibleValues.length) {
-      aValue = this.possibleValues.length-1;
-    }
-    result += this.possibleValues[aValue];
-  }
-  return result;
+  this.postulates = this.postulates.concat(this.basePostulates);
 }
 
 digitsAI.prototype.isValidGuess = function(guess) {
   if (this.isValidFn == null) {
     //defining variables
-    var code = '';
-    for (var i = 0; i < guess.length; i++){
-      code += 'var v' + (i+1) + '=\'' + guess[i] + '\'; ';
-    }
-    
-    code += 'var result = ' + this.postulates.join(' && ');
-    code += '; return result;';
+    var code = 'return ' + this.postulates.join(' && ');
 
     this.isValidFn = eval('f = function(v){' + code + '} ; f;');
     // var result = eval(code);

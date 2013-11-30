@@ -1,5 +1,11 @@
 var digitsAI = function() {};
 
+//TODO: Array of possible value for each position, updated when a value is ruled out.
+//TODO: Update generateGuess method, from possible values (said value being maximum once in final result)
+//TODO: Write commonPostulate method, using an array of possible values, removing those ruled out from said array.
+//			for exemple : {'1':{'not':['v1', 'v2]''}, '3':{'in':'v2'}, '4':{}...}      <- '2' not present because ruled out.
+
+
 digitsAI.prototype.play = function (game) {
   this.reset(game);
   this.verbose = !!game.verbose;
@@ -82,7 +88,12 @@ digitsAI.prototype.calculatePostulates = function(game, attempt){
   //console.log('game length: ' + game.length);
   //console.log(totalFoundValue);
 
-  // building first part postulates
+  // building common postulates.
+  digitsAI.prototype.calculateCommonPostualtes = function(game, attempt) {
+  	//TODO
+  }
+
+  // building part-related postulates.
   if (game.length != this.possibleValues.length) {
     this.calculateFirstPostulates(game, attempt);
     this.postulates = [].concat(this.basePostulates, this.firstPostulates, this.commonPostulates);
